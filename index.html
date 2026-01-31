@@ -1,0 +1,924 @@
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>EBO Medikal - Servis Formu</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+-webkit-tap-highlight-color: transparent;
+}
+
+body {
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+background: #f5f7fa;
+min-height: 100vh;
+padding: 10px;
+}
+
+.container {
+max-width: 800px;
+margin: 0 auto;
+background: white;
+border-radius: 16px;
+box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+overflow: hidden;
+}
+
+.header {
+background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+padding: 20px;
+text-align: center;
+position: relative;
+}
+
+.status-indicator {
+position: absolute;
+top: 15px;
+right: 15px;
+width: 12px;
+height: 12px;
+border-radius: 50%;
+background: #dc3545;
+border: 2px solid white;
+animation: pulse 2s infinite;
+}
+
+.status-indicator.online {
+background: #28a745;
+animation: none;
+box-shadow: 0 0 10px #28a745;
+}
+
+@keyframes pulse {
+0% { opacity: 1; }
+50% { opacity: 0.5; }
+100% { opacity: 1; }
+}
+
+.header h1 {
+color: #ffd700;
+font-size: 1.3em;
+font-weight: 700;
+margin-bottom: 5px;
+}
+
+.header p {
+color: #a0a0a0;
+font-size: 0.8em;
+}
+
+.connection-status {
+position: absolute;
+top: 15px;
+left: 15px;
+color: white;
+font-size: 0.75em;
+background: rgba(0,0,0,0.3);
+padding: 4px 8px;
+border-radius: 4px;
+}
+
+.qr-section {
+background: white;
+padding: 15px;
+text-align: center;
+border-bottom: 2px solid #e1e4e8;
+}
+
+.qr-container {
+display: inline-block;
+padding: 10px;
+background: white;
+border-radius: 10px;
+border: 2px solid #ffd700;
+}
+
+.qr-id {
+margin-top: 8px;
+font-family: monospace;
+font-size: 0.85em;
+color: #666;
+font-weight: 600;
+}
+
+.sync-badge {
+display: inline-block;
+background: #28a745;
+color: white;
+padding: 4px 12px;
+border-radius: 20px;
+font-size: 0.75em;
+margin-top: 8px;
+opacity: 0;
+transition: opacity 0.3s;
+}
+
+.sync-badge.show {
+opacity: 1;
+}
+
+.recent-forms {
+background: #f8f9fa;
+padding: 15px;
+border-bottom: 2px solid #e1e4e8;
+max-height: 250px;
+overflow-y: auto;
+}
+
+.recent-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 10px;
+}
+
+.recent-header h3 {
+font-size: 0.9em;
+color: #1a1a2e;
+}
+
+.refresh-btn {
+background: #ffd700;
+border: none;
+padding: 6px 12px;
+border-radius: 6px;
+cursor: pointer;
+font-size: 0.8em;
+font-weight: 600;
+}
+
+.recent-item {
+padding: 12px;
+background: white;
+border-radius: 8px;
+margin-bottom: 8px;
+cursor: pointer;
+border: 1px solid #e1e4e8;
+display: flex;
+justify-content: space-between;
+align-items: center;
+transition: all 0.2s;
+}
+
+.recent-item:hover {
+border-color: #ffd700;
+transform: translateX(5px);
+}
+
+.recent-item.active {
+background: #fff3cd;
+border-color: #ffd700;
+border-width: 2px;
+}
+
+.recent-item-info {
+flex: 1;
+}
+
+.recent-item-title {
+font-weight: 600;
+color: #1a1a2e;
+font-size: 0.9em;
+}
+
+.recent-item-sub {
+font-size: 0.75em;
+color: #666;
+margin-top: 2px;
+}
+
+.recent-item-status {
+padding: 4px 10px;
+border-radius: 12px;
+font-size: 0.7em;
+font-weight: 600;
+}
+
+.status-beklemede { background: #fff3cd; color: #856404; }
+.status-devam { background: #d1ecf1; color: #0c5460; }
+.status-tamamlandi { background: #d4edda; color: #155724; }
+
+.form-container {
+padding: 20px;
+}
+
+.section {
+margin-bottom: 20px;
+padding: 15px;
+background: #fafbfc;
+border-radius: 12px;
+border-left: 4px solid #ffd700;
+}
+
+.section-title {
+font-size: 0.95em;
+color: #1a1a2e;
+font-weight: 600;
+margin-bottom: 12px;
+display: flex;
+align-items: center;
+gap: 8px;
+}
+
+.form-row {
+display: flex;
+flex-direction: column;
+gap: 10px;
+}
+
+.form-group {
+display: flex;
+flex-direction: column;
+}
+
+label {
+font-weight: 500;
+color: #444;
+margin-bottom: 5px;
+font-size: 0.85em;
+}
+
+input, select, textarea {
+padding: 12px;
+border: 1.5px solid #e1e4e8;
+border-radius: 10px;
+font-size: 16px;
+transition: all 0.3s;
+background: white;
+}
+
+input:focus, select:focus, textarea:focus {
+outline: none;
+border-color: #ffd700;
+box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+}
+
+input.saving {
+background: #fff3cd;
+border-color: #ffd700;
+}
+
+input.saved {
+background: #d4edda;
+border-color: #28a745;
+}
+
+textarea {
+resize: vertical;
+min-height: 80px;
+}
+
+.checkbox-grid {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 8px;
+}
+
+.checkbox-item {
+display: flex;
+align-items: center;
+gap: 8px;
+padding: 10px;
+background: white;
+border-radius: 8px;
+border: 1.5px solid #e1e4e8;
+font-size: 0.85em;
+cursor: pointer;
+}
+
+input[type="checkbox"] {
+width: 18px;
+height: 18px;
+accent-color: #ffd700;
+}
+
+.priority-selector {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 10px;
+}
+
+.priority-btn {
+padding: 12px;
+border: 2px solid #e1e4e8;
+background: white;
+border-radius: 10px;
+cursor: pointer;
+font-weight: 500;
+font-size: 0.9em;
+transition: all 0.2s;
+}
+
+.priority-btn.low { color: #28a745; }
+.priority-btn.medium { color: #ff9800; }
+.priority-btn.high { color: #dc3545; }
+
+.priority-btn.active {
+transform: scale(1.05);
+font-weight: 600;
+}
+
+.priority-btn.low.active { background: #d4edda; border-color: #28a745; }
+.priority-btn.medium.active { background: #fff3cd; border-color: #ff9800; }
+.priority-btn.high.active { background: #f8d7da; border-color: #dc3545; }
+
+.parts-card {
+background: white;
+border-radius: 10px;
+border: 1.5px solid #e1e4e8;
+padding: 15px;
+margin-bottom: 10px;
+}
+
+.parts-row {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 10px;
+margin-bottom: 10px;
+}
+
+.btn-icon {
+padding: 10px;
+border: none;
+border-radius: 8px;
+cursor: pointer;
+font-size: 0.85em;
+font-weight: 500;
+width: 100%;
+transition: all 0.2s;
+}
+
+.btn-add {
+background: #ffd700;
+color: #1a1a2e;
+}
+
+.btn-remove {
+background: #fee;
+color: #dc3545;
+border: 1px solid #fcc;
+margin-top: 10px;
+}
+
+.actions {
+display: flex;
+flex-direction: column;
+gap: 10px;
+margin-top: 30px;
+padding-top: 20px;
+border-top: 2px solid #e1e4e8;
+}
+
+.btn {
+padding: 16px;
+border-radius: 12px;
+font-size: 1em;
+font-weight: 600;
+cursor: pointer;
+border: none;
+transition: all 0.2s;
+}
+
+.btn:active {
+transform: scale(0.98);
+}
+
+.btn-secondary {
+background: #e9ecef;
+color: #495057;
+}
+
+.btn-primary {
+background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+color: #1a1a2e;
+box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+.btn-success {
+background: #28a745;
+color: white;
+}
+
+@media (min-width: 768px) {
+body { padding: 20px; }
+.header { padding: 30px; }
+.header h1 { font-size: 1.6em; }
+.form-container { padding: 30px; }
+.form-row { display: grid; grid-template-columns: repeat(3, 1fr); }
+.form-row.two-col { grid-template-columns: repeat(2, 1fr); }
+.checkbox-grid { grid-template-columns: repeat(3, 1fr); }
+.actions { flex-direction: row; justify-content: flex-end; }
+.btn { width: auto; padding: 16px 40px; }
+}
+
+@media print {
+body { background: white; padding: 0; }
+.container { box-shadow: none; }
+.recent-forms, .status-indicator, .connection-status, .actions { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<span class="connection-status" id="connStatus">Bağlanıyor...</span>
+<div class="status-indicator" id="statusIndicator"></div>
+<h1>EBO MEDİKAL SERVİS FORMU</h1>
+<p>Anlık Senkronizasyon Aktif</p>
+</div>
+
+<!-- Son Formlar -->
+<div class="recent-forms" id="recentForms">
+<div class="recent-header">
+<h3>📋 Son Formlar (Tüm Cihazlar)</h3>
+<button class="refresh-btn" onclick="loadRecentForms()">🔄 Yenile</button>
+</div>
+<div id="recentList">
+<p style="color: #999; text-align: center; padding: 20px;">Yükleniyor...</p>
+</div>
+</div>
+
+<!-- QR Kod -->
+<div class="qr-section">
+<div class="qr-container">
+<div id="qrcode"></div>
+<div class="qr-id" id="formId">Yeni Form</div>
+</div>
+<div class="sync-badge" id="syncBadge">✓ Buluta Kaydedildi</div>
+</div>
+
+<div class="form-container">
+<!-- Müşteri -->
+<div class="section">
+<h2 class="section-title">Müşteri Bilgileri</h2>
+<div class="form-row two-col">
+<div class="form-group">
+<label>Firma / Kişi Adı *</label>
+<input type="text" id="musteriAdi" oninput="autoSave(this)">
+</div>
+<div class="form-group">
+<label>Yetkili Kişi</label>
+<input type="text" id="yetkili" oninput="autoSave(this)">
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Telefon *</label>
+<input type="tel" id="telefon" oninput="autoSave(this)">
+</div>
+<div class="form-group">
+<label>E-posta</label>
+<input type="email" id="email" oninput="autoSave(this)">
+</div>
+<div class="form-group">
+<label>Adres</label>
+<input type="text" id="adres" oninput="autoSave(this)">
+</div>
+</div>
+</div>
+
+<!-- Cihaz -->
+<div class="section">
+<h2 class="section-title">Cihaz Bilgileri</h2>
+<div class="form-row">
+<div class="form-group">
+<label>Cihaz Türü</label>
+<select id="cihazTuru" onchange="autoSave(this)">
+<option value="">Seçiniz...</option>
+<option>MR Cihazı</option>
+<option>CT Tomografi</option>
+<option>Ultrason</option>
+<option>Röntgen</option>
+<option>Mamografi</option>
+<option>Angiografi</option>
+<option>Laboratuvar Cihazı</option>
+<option>Diğer</option>
+</select>
+</div>
+<div class="form-group">
+<label>Marka / Model</label>
+<input type="text" id="markaModel" oninput="autoSave(this)">
+</div>
+<div class="form-group">
+<label>Seri No</label>
+<input type="text" id="seriNo" oninput="autoSave(this)">
+</div>
+</div>
+</div>
+
+<!-- Servis -->
+<div class="section">
+<h2 class="section-title">Servis Talebi</h2>
+<div class="form-row">
+<div class="form-group">
+<label>Bildirim Tarihi</label>
+<input type="date" id="bildirimTarihi" onchange="autoSave(this)">
+</div>
+<div class="form-group">
+<label>Öncelik</label>
+<div class="priority-selector">
+<button type="button" class="priority-btn low" onclick="setPriority(this, 'Düşük')">Düşük</button>
+<button type="button" class="priority-btn medium active" onclick="setPriority(this, 'Orta')">Orta</button>
+<button type="button" class="priority-btn high" onclick="setPriority(this, 'Yüksek')">Yüksek</button>
+</div>
+</div>
+<div class="form-group">
+<label>Durum</label>
+<select id="durum" onchange="autoSave(this)">
+<option>Beklemede</option>
+<option>Devam Ediyor</option>
+<option>Parça Bekleniyor</option>
+<option>Tamamlandı</option>
+</select>
+</div>
+</div>
+
+<div class="form-group" style="margin-top: 15px;">
+<label>Arıza / Şikayet</label>
+<textarea id="sikayet" oninput="autoSave(this)"></textarea>
+</div>
+</div>
+
+<!-- Teknik -->
+<div class="section">
+<h2 class="section-title">Teknik İnceleme</h2>
+<div class="checkbox-grid">
+<label class="checkbox-item"><input type="checkbox" onchange="autoSave(this)"> Kalibrasyon</label>
+<label class="checkbox-item"><input type="checkbox" onchange="autoSave(this)"> Yazılım</label>
+<label class="checkbox-item"><input type="checkbox" onchange="autoSave(this)"> Parça Değişimi</label>
+<label class="checkbox-item"><input type="checkbox" onchange="autoSave(this)"> Bakım</label>
+<label class="checkbox-item"><input type="checkbox" onchange="autoSave(this)"> Arıza Tespiti</label>
+<label class="checkbox-item"><input type="checkbox" onchange="autoSave(this)"> Test</label>
+</div>
+
+<div class="form-group" style="margin-top: 15px;">
+<label>Tespit Edilen Arıza</label>
+<textarea id="tespit" oninput="autoSave(this)"></textarea>
+</div>
+
+<div class="form-group" style="margin-top: 10px;">
+<label>Uygulanan Çözüm</label>
+<textarea id="cozum" oninput="autoSave(this)"></textarea>
+</div>
+</div>
+
+<!-- Parçalar -->
+<div class="section">
+<h2 class="section-title">Kullanılan Parçalar</h2>
+<div id="parcaListesi">
+<div class="parts-card">
+<div class="parts-row">
+<input type="text" placeholder="Parça Kodu" oninput="autoSave(this)">
+<input type="text" placeholder="Parça Adı" oninput="autoSave(this)">
+</div>
+<div class="parts-row">
+<input type="number" placeholder="Miktar" oninput="autoSave(this)">
+<input type="text" placeholder="Birim Fiyat" oninput="autoSave(this)">
+</div>
+</div>
+</div>
+<button type="button" class="btn-icon btn-add" onclick="yeniParca()">+ Parça Ekle</button>
+</div>
+
+<!-- Onay -->
+<div class="section">
+<h2 class="section-title">Onay</h2>
+<div class="form-row">
+<div class="form-group">
+<label>Teknisyen</label>
+<input type="text" id="teknisyen" oninput="autoSave(this)">
+</div>
+<div class="form-group">
+<label>Onaylayan</label>
+<input type="text" id="onaylayan" oninput="autoSave(this)">
+</div>
+<div class="form-group">
+<label>Tarih</label>
+<input type="date" id="onayTarihi" onchange="autoSave(this)">
+</div>
+</div>
+</div>
+
+<div class="actions">
+<button type="button" class="btn btn-secondary" onclick="yeniForm()">+ Yeni Form</button>
+<button type="button" class="btn btn-primary" onclick="formYazdir()">🖨️ Yazdır</button>
+</div>
+</div>
+</div>
+
+<script>
+// Firebase yapılandırması - SİZİN BİLGİLERİNİZ
+const firebaseConfig = {
+apiKey: "AIzaSyDYDiVYGJWYWKHZi7T24Fk2xuBm4g6JiNI",
+authDomain: "ebomedikal-80da4.firebaseapp.com",
+databaseURL: "https://ebomedikal-80da4-default-rtdb.europe-west1.firebasedatabase.app",
+projectId: "ebomedikal-80da4",
+storageBucket: "ebomedikal-80da4.firebasestorage.app",
+messagingSenderId: "542996689822",
+appId: "1:542996689822:web:b8b602ad3d0d46e1b61c8f"
+};
+
+// Firebase başlat
+let database;
+let currentFormId = null;
+let saveTimeout = null;
+let isOnline = false;
+
+try {
+firebase.initializeApp(firebaseConfig);
+database = firebase.database();
+isOnline = true;
+document.getElementById('statusIndicator').classList.add('online');
+document.getElementById('connStatus').textContent = 'Online';
+document.getElementById('connStatus').style.background = '#28a745';
+} catch(e) {
+console.error("Firebase hatası:", e);
+document.getElementById('connStatus').textContent = 'Offline';
+}
+
+// Sayfa yüklendiğinde
+window.onload = function() {
+document.getElementById('bildirimTarihi').valueAsDate = new Date();
+
+// URL'den form ID kontrolü
+const urlParams = new URLSearchParams(window.location.search);
+const formIdFromUrl = urlParams.get('id');
+
+if (formIdFromUrl) {
+loadForm(formIdFromUrl);
+} else {
+yeniForm();
+}
+
+loadRecentForms();
+
+// Gerçek zamanlı güncellemeleri dinle
+if (isOnline) {
+database.ref('servisForms').on('value', () => {
+loadRecentForms();
+});
+}
+};
+
+function yeniForm() {
+currentFormId = 'EBO-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+document.getElementById('formId').textContent = currentFormId;
+
+// Formu temizle
+document.querySelectorAll('input[type="text"], input[type="tel"], input[type="email"], textarea').forEach(el => el.value = '');
+document.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
+document.querySelectorAll('input[type="checkbox"]').forEach(el => el.checked = false);
+document.querySelectorAll('input[type="date"]').forEach(el => el.value = '');
+document.getElementById('bildirimTarihi').valueAsDate = new Date();
+document.getElementById('durum').selectedIndex = 0;
+
+// Önceliği ortaya ayarla
+document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active'));
+document.querySelector('.priority-btn.medium').classList.add('active');
+
+// Parça listesini sıfırla
+const parcaListesi = document.getElementById('parcaListesi');
+parcaListesi.innerHTML = `
+<div class="parts-card">
+<div class="parts-row">
+<input type="text" placeholder="Parça Kodu" oninput="autoSave(this)">
+<input type="text" placeholder="Parça Adı" oninput="autoSave(this)">
+</div>
+<div class="parts-row">
+<input type="number" placeholder="Miktar" oninput="autoSave(this)">
+<input type="text" placeholder="Birim Fiyat" oninput="autoSave(this)">
+</div>
+</div>
+`;
+
+generateQR();
+updateUrl(currentFormId);
+
+// Aktif seçimi kaldır
+document.querySelectorAll('.recent-item').forEach(el => el.classList.remove('active'));
+}
+
+function autoSave(element) {
+if (!isOnline || !currentFormId) return;
+
+element.classList.add('saving');
+clearTimeout(saveTimeout);
+
+saveTimeout = setTimeout(() => {
+saveToFirebase();
+element.classList.remove('saving');
+element.classList.add('saved');
+setTimeout(() => element.classList.remove('saved'), 1000);
+}, 500);
+}
+
+function saveToFirebase() {
+if (!isOnline || !currentFormId) return;
+
+const checkboxes = [];
+document.querySelectorAll('.checkbox-item input:checked').forEach(cb => {
+checkboxes.push(cb.parentElement.textContent.trim());
+});
+
+const formData = {
+id: currentFormId,
+musteriAdi: document.getElementById('musteriAdi').value,
+yetkili: document.getElementById('yetkili').value,
+telefon: document.getElementById('telefon').value,
+email: document.getElementById('email').value,
+adres: document.getElementById('adres').value,
+cihazTuru: document.getElementById('cihazTuru').value,
+markaModel: document.getElementById('markaModel').value,
+seriNo: document.getElementById('seriNo').value,
+bildirimTarihi: document.getElementById('bildirimTarihi').value,
+oncelik: document.querySelector('.priority-btn.active')?.textContent || 'Orta',
+durum: document.getElementById('durum').value,
+sikayet: document.getElementById('sikayet').value,
+tespit: document.getElementById('tespit').value,
+cozum: document.getElementById('cozum').value,
+checkboxes: checkboxes,
+teknisyen: document.getElementById('teknisyen').value,
+onaylayan: document.getElementById('onaylayan').value,
+onayTarihi: document.getElementById('onayTarihi').value,
+sonGuncelleme: firebase.database.ServerValue.TIMESTAMP
+};
+
+database.ref('servisForms/' + currentFormId).set(formData)
+.then(() => {
+const badge = document.getElementById('syncBadge');
+badge.classList.add('show');
+setTimeout(() => badge.classList.remove('show'), 2000);
+generateQR();
+})
+.catch(err => console.error("Kayıt hatası:", err));
+}
+
+function loadForm(formId) {
+if (!isOnline) return;
+
+database.ref('servisForms/' + formId).once('value')
+.then(snapshot => {
+const data = snapshot.val();
+if (!data) {
+alert('Form bulunamadı!');
+return;
+}
+
+currentFormId = formId;
+document.getElementById('formId').textContent = formId;
+
+// Verileri doldur
+document.getElementById('musteriAdi').value = data.musteriAdi || '';
+document.getElementById('yetkili').value = data.yetkili || '';
+document.getElementById('telefon').value = data.telefon || '';
+document.getElementById('email').value = data.email || '';
+document.getElementById('adres').value = data.adres || '';
+document.getElementById('cihazTuru').value = data.cihazTuru || '';
+document.getElementById('markaModel').value = data.markaModel || '';
+document.getElementById('seriNo').value = data.seriNo || '';
+document.getElementById('bildirimTarihi').value = data.bildirimTarihi || '';
+document.getElementById('durum').value = data.durum || 'Beklemede';
+document.getElementById('sikayet').value = data.sikayet || '';
+document.getElementById('tespit').value = data.tespit || '';
+document.getElementById('cozum').value = data.cozum || '';
+document.getElementById('teknisyen').value = data.teknisyen || '';
+document.getElementById('onaylayan').value = data.onaylayan || '';
+document.getElementById('onayTarihi').value = data.onayTarihi || '';
+
+// Öncelik
+document.querySelectorAll('.priority-btn').forEach(b => {
+b.classList.remove('active');
+if (b.textContent === data.oncelik) b.classList.add('active');
+});
+
+// Checkboxlar
+document.querySelectorAll('.checkbox-item input').forEach(cb => {
+cb.checked = data.checkboxes?.includes(cb.parentElement.textContent.trim()) || false;
+});
+
+generateQR();
+updateUrl(formId);
+
+// Aktif seçimi güncelle
+document.querySelectorAll('.recent-item').forEach(el => el.classList.remove('active'));
+});
+}
+
+function loadRecentForms() {
+if (!isOnline) {
+document.getElementById('recentList').innerHTML = '<p style="color: #999; text-align: center;">Çevrimdışı mod</p>';
+return;
+}
+
+const list = document.getElementById('recentList');
+list.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Yükleniyor...</p>';
+
+database.ref('servisForms').orderByChild('sonGuncelleme').limitToLast(20).once('value')
+.then(snapshot => {
+const forms = snapshot.val();
+list.innerHTML = '';
+
+if (!forms) {
+list.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Henüz kayıt yok</p>';
+return;
+}
+
+// Ters sırala (en yeni üstte)
+const sortedKeys = Object.keys(forms).sort((a, b) => forms[b].sonGuncelleme - forms[a].sonGuncelleme);
+
+sortedKeys.forEach(key => {
+const form = forms[key];
+const div = document.createElement('div');
+div.className = 'recent-item' + (key === currentFormId ? ' active' : '');
+
+const statusClass = form.durum === 'Tamamlandı' ? 'status-tamamlandi' :
+form.durum === 'Devam Ediyor' ? 'status-devam' : 'status-beklemede';
+
+const date = form.sonGuncelleme ? new Date(form.sonGuncelleme).toLocaleString('tr-TR', {
+day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+}) : '-';
+
+div.innerHTML = `
+<div class="recent-item-info">
+<div class="recent-item-title">${form.musteriAdi || 'İsimsiz'}</div>
+<div class="recent-item-sub">${form.cihazTuru || 'Cihaz seçilmedi'} • ${date}</div>
+</div>
+<span class="recent-item-status ${statusClass}">${form.durum}</span>
+`;
+
+div.onclick = () => {
+loadForm(key);
+// Aktif sınıfını güncelle
+document.querySelectorAll('.recent-item').forEach(el => el.classList.remove('active'));
+div.classList.add('active');
+};
+
+list.appendChild(div);
+});
+})
+.catch(err => {
+list.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Yükleme hatası</p>';
+console.error(err);
+});
+}
+
+function generateQR() {
+const container = document.getElementById('qrcode');
+container.innerHTML = '';
+
+const qrData = JSON.stringify({
+id: currentFormId,
+url: window.location.origin + window.location.pathname + '?id=' + currentFormId
+});
+
+new QRCode(container, {
+text: qrData,
+width: 128,
+height: 128,
+colorDark: "#1a1a2e",
+colorLight: "#ffffff",
+correctLevel: QRCode.CorrectLevel.M
+});
+}
+
+function updateUrl(formId) {
+const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?id=' + formId;
+window.history.pushState({path: newUrl}, '', newUrl);
+}
+
+function setPriority(btn, value) {
+document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active'));
+btn.classList.add('active');
+autoSave(btn);
+}
+
+function yeniParca() {
+const container = document.getElementById('parcaListesi');
+const card = document.createElement('div');
+card.className = 'parts-card';
+card.innerHTML = `
+<div class="parts-row">
+<input type="text" placeholder="Parça Kodu" oninput="autoSave(this)">
+<input type="text" placeholder="Parça Adı" oninput="autoSave(this)">
+</div>
+<div class="parts-row">
+<input type="number" placeholder="Miktar" oninput="autoSave(this)">
+<input type="text" placeholder="Birim Fiyat" oninput="autoSave(this)">
+</div>
+<button type="button" class="btn-icon btn-remove" onclick="this.parentElement.remove(); saveToFirebase();">Sil</button>
+`;
+container.appendChild(card);
+}
+
+function formYazdir() {
+window.print();
+}
+</script>
+</body>
+</html>
